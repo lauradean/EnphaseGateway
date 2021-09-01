@@ -11,7 +11,7 @@
 
 add_action('admin_menu', 'enphase_gateway_setup_menu');
 add_action( 'admin_init', 'update_enphase_gateway_settings' );
-add_shortcode('enphase', 'show_enphase_graph');
+add_shortcode('enphase', 'show_enphase_graph_zoom');
 
 function enphase_gateway_setup_menu(){
     add_menu_page( 'Enphase Gateway Page', 'Enphase Gateway', 'manage_options', 'enphase-gateway', 'enphase_gateway_init' );
@@ -54,11 +54,104 @@ function enphase_gateway_init(){ ?>
       <?php submit_button(); ?>
     </form>
 
-
-
 <?php }
 
+function show_enphase_graph_zoom() {
+
+  $user_id = get_option('enphase_user_id');
+  $key = get_option('enphase_api_key');
+  $system_id = get_option('enphase_system_id');
+  $start_date = strtotime('yesterday midnight');
+
+  echo('start date: ' . date('Y-m-d H:i', $start_date) . '<br/>');
+  echo('timezone: ' . date_default_timezone_get() . '<br/>');
+
+  // PRODUCTION
+  $url = 'https://api.enphaseenergy.com/api/v2/systems/' .$system_id. '/consumption_stats?key=' .$key. '&user_id=' .$user_id. '&start_date=' .$start_date;
+  echo ('curl -v "' .$url. '" <br/>');
+  $result = wp_remote_get( $url );
+  $body = json_decode($result['body']);
+
+  $enwh = 0;
+  $index = 0;
+  foreach( $body->intervals as $object ) {
+
+    echo(date('H:i', $object->end_at) . ' -> ' . $object->enwh . ', ');
+    $enwh += $object->enwh;
+    $minutes = date('i', $object->end_at);
+    if ($minutes%15 === 0) {
+      $time = date('H:i', $object->end_at);
+      $enphaseData[] = array(0 => $time, 1 => $enwh);
+      $enwh = rand(100, 300);
+    }
+  }
+  exit;
+
+  // CONSUMPTION
+  $url = 'https://api.enphaseenergy.com/api/v2/systems/' .$system_id. '/consumption_stats?key=' .$key. '&user_id=' .$user_id. '&start_date=' .$start_date;
+  echo ('curl -v "' .$url. '" <br/>');
+  $result = wp_remote_get( $url );
+  $body = json_decode($result['body']);
+  //print_r($body->intervals);
+
+  foreach( $body->intervals as $index=>$object ) {
+    print_r($enphaseData[$index]);
+    echo(date('H:i', $object->end_at) . '<br/>');
+    array_push($enphaseData[$index], $object->enwh);
+  }
+
+  print_r($enphaseData);
+
+  // $url2 = 'https://api.enphaseenergy.com/api/v2/systems/' .$system_id. '/consumption_lifetime?key=' .$key. '&user_id=' .$user_id. '&start_date=' .$start_date;
+  // $result2 = wp_remote_get( $url2 );
+  // $body2 = json_decode($result2['body']);
+  //
+  // foreach( $body2->consumption as $index => $value ) {
+  //   array_push($enphaseData[$index], $value);
+  // }
+
+  //array_unshift($enphaseData, [date('Y-m-d'), 'Produced (Wh)']);
+  array_unshift($enphaseData, ['Date', 'Produced (Wh)', 'Consumed (Wh)']);
+  $enphaseChartData = json_encode($enphaseData);
+
+  ?>
+
+  <table>
+    <tr>
+      <td width="10px">&#60;</td>
+      <td><div id='enphase_chart' style="padding:20px;background-color:white;"></div></td>
+      <td width="10px">&#62;</td>
+    </tr>
+  </table>
+
+  <div id='enphase_chartx' style="padding:20px;background-color:white;"></div>
+
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <script type="text/javascript">
+    google.charts.load('current', {'packages':['bar']});
+    google.charts.setOnLoadCallback(drawEnphaseChart);
+
+    function drawEnphaseChart() {
+      var data = google.visualization.arrayToDataTable(<?= $enphaseChartData ?>);
+
+      var options = {
+        chart: {
+          title: 'Energy Production & Consumption',
+        },
+        legend: {textStyle: {fontSize: 15}},
+      };
+      var chart = new google.charts.Bar(document.getElementById('enphase_chart'));
+
+      chart.draw(data, google.charts.Bar.convertOptions(options));
+    }
+  </script>
+  <?php
+}
+
 function show_enphase_graph() {
+
+  add_option('enphase_data');
+  $enphase_data = get_option('enphase_data');
 
   $days = get_option('enphase_days');
   $start_date = date('Y-m-d', strtotime('-' .$days. ' days'));
@@ -66,31 +159,57 @@ function show_enphase_graph() {
   $key = get_option('enphase_api_key');
   $system_id = get_option('enphase_system_id');
 
-  // PRODUCTION
-  $url = 'https://api.enphaseenergy.com/api/v2/systems/' .$system_id. '/energy_lifetime?key=' .$key. '&user_id=' .$user_id. '&start_date=' .$start_date;
-  $result = wp_remote_get( $url );
-  $body = json_decode($result['body']);
-
-  $enphaseData = array();
-  foreach( $body->production as $index => $value ) {
-    $date = date('Y-m-d', strtotime($body->start_date. ' + '. $index .' days'));
-    $enphaseData[] = array(0 => $date, 1 => $value);
+  if ($enphase_data
+      && $enphase_data['start_date'] === $start_date
+      && $enphase_data['end_date'] === date('Y-m-d')
+      && $enphase_data['api_key'] === $key
+      && $enphase_data['user_id'] === $user_id
+      && $enphase_data['system_id'] === $system_id) {
+    $enphaseChartData = json_encode($enphase_data['chart_data']);
   }
 
-  // CONSUMPTION
-  $url2 = 'https://api.enphaseenergy.com/api/v2/systems/' .$system_id. '/consumption_lifetime?key=' .$key. '&user_id=' .$user_id. '&start_date=' .$start_date;
-  $result2 = wp_remote_get( $url2 );
-  $body2 = json_decode($result2['body']);
+  else {
 
-  foreach( $body2->consumption as $index => $value ) {
-    array_push($enphaseData[$index], $value);
+    // PRODUCTION
+    $url = 'https://api.enphaseenergy.com/api/v2/systems/' .$system_id. '/energy_lifetime?key=' .$key. '&user_id=' .$user_id. '&start_date=' .$start_date;
+    $result = wp_remote_get( $url );
+    $body = json_decode($result['body']);
+
+    foreach( $body->production as $index => $value ) {
+      $date = date('Y-m-d', strtotime($body->start_date. ' + '. $index .' days'));
+      $enphaseData[] = array(0 => $date, 1 => $value);
+    }
+
+    // CONSUMPTION
+    $url2 = 'https://api.enphaseenergy.com/api/v2/systems/' .$system_id. '/consumption_lifetime?key=' .$key. '&user_id=' .$user_id. '&start_date=' .$start_date;
+    $result2 = wp_remote_get( $url2 );
+    $body2 = json_decode($result2['body']);
+
+    foreach( $body2->consumption as $index => $value ) {
+      array_push($enphaseData[$index], $value);
+    }
+
+    array_unshift($enphaseData, ['Date', 'Produced (Wh)', 'Consumed (Wh)']);
+    $enphaseChartData = json_encode($enphaseData);
+
+    $enphase_data = array(
+      'user_id' => $user_id,
+      'api_key' => $key,
+      'system_id' => $system_id,
+      'start_date' => $start_date,
+      'end_date' => date('Y-m-d'),
+      'chart_data' => $enphaseData
+    );
+    update_option('enphase_data', $enphase_data);
+
   }
-
-  array_unshift($enphaseData, ['Date', 'Produced (Wh)', 'Consumed (Wh)']);
-  $enphaseChartData = json_encode($enphaseData);
 
   ?>
 
+  <a href="http://enphase.com/">
+    <div style="display: inline-block; height: 30px; vertical-align: top;">Powered by</div>
+    <img style="height: 33px;" src="<?php echo plugin_dir_url( __FILE__ ) . 'images/Powered_By_Enphase_Logo_RGB.png'; ?>">
+  </a>
   <div id='enphase_chart' style="padding:20px;background-color:white;"></div>
 
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
@@ -114,6 +233,4 @@ function show_enphase_graph() {
     }
   </script>
   <?php
-  //print_r($productionData);
-
 }
