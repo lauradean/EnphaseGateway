@@ -1,4 +1,16 @@
-This plugin is for displaying the production and consumption data for solar panel installation. To use, you will need a user login for Enlighten and a developer API key for Enphase Storage.
+=== EnphaseGateway: Display solar installation chart from Enphase # ===
+Contributors: lauradean
+Tags: visualization, graphs, solar, api
+Requires at least: 5.8
+Tested up to: 5.8
+Requires PHP: 7.4
+Stable tag: main
+License: MIT
+License URI: https://opensource.org/licenses/MIT
+
+## Description
+
+This plugin is for displaying a bar graph of the production and consumption data for a solar panel installation. To use, you will need a user login for Enlighten and a developer API key for Enphase Storage.
 
 Log in to Enlighten here:
 https://enlighten.enphaseenergy.com/
