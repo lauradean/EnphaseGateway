@@ -4,14 +4,14 @@
  * Description:   Display information from your enphase solar installation
  * Requires at least: 	5.8
  * Requires PHP: 	7.4
- * Version: 0.1
+ * Version: 0.2
  * Author: 		Laura Dean
  * License: 		MIT
  */
 
 add_action('admin_menu', 'enphase_gateway_setup_menu');
 add_action( 'admin_init', 'update_enphase_gateway_settings' );
-add_shortcode('enphase', 'show_enphase_graph_zoom');
+add_shortcode('enphase', 'show_enphase_graph');
 
 function enphase_gateway_setup_menu(){
     add_menu_page( 'Enphase Gateway Page', 'Enphase Gateway', 'manage_options', 'enphase-gateway', 'enphase_gateway_init' );
@@ -56,97 +56,6 @@ function enphase_gateway_init(){ ?>
 
 <?php }
 
-function show_enphase_graph_zoom() {
-
-  $user_id = get_option('enphase_user_id');
-  $key = get_option('enphase_api_key');
-  $system_id = get_option('enphase_system_id');
-  $start_date = strtotime('yesterday midnight');
-
-  echo('start date: ' . date('Y-m-d H:i', $start_date) . '<br/>');
-  echo('timezone: ' . date_default_timezone_get() . '<br/>');
-
-  // PRODUCTION
-  $url = 'https://api.enphaseenergy.com/api/v2/systems/' .$system_id. '/consumption_stats?key=' .$key. '&user_id=' .$user_id. '&start_date=' .$start_date;
-  echo ('curl -v "' .$url. '" <br/>');
-  $result = wp_remote_get( $url );
-  $body = json_decode($result['body']);
-
-  $enwh = 0;
-  $index = 0;
-  foreach( $body->intervals as $object ) {
-
-    echo(date('H:i', $object->end_at) . ' -> ' . $object->enwh . ', ');
-    $enwh += $object->enwh;
-    $minutes = date('i', $object->end_at);
-    if ($minutes%15 === 0) {
-      $time = date('H:i', $object->end_at);
-      $enphaseData[] = array(0 => $time, 1 => $enwh);
-      $enwh = rand(100, 300);
-    }
-  }
-  exit;
-
-  // CONSUMPTION
-  $url = 'https://api.enphaseenergy.com/api/v2/systems/' .$system_id. '/consumption_stats?key=' .$key. '&user_id=' .$user_id. '&start_date=' .$start_date;
-  echo ('curl -v "' .$url. '" <br/>');
-  $result = wp_remote_get( $url );
-  $body = json_decode($result['body']);
-  //print_r($body->intervals);
-
-  foreach( $body->intervals as $index=>$object ) {
-    print_r($enphaseData[$index]);
-    echo(date('H:i', $object->end_at) . '<br/>');
-    array_push($enphaseData[$index], $object->enwh);
-  }
-
-  print_r($enphaseData);
-
-  // $url2 = 'https://api.enphaseenergy.com/api/v2/systems/' .$system_id. '/consumption_lifetime?key=' .$key. '&user_id=' .$user_id. '&start_date=' .$start_date;
-  // $result2 = wp_remote_get( $url2 );
-  // $body2 = json_decode($result2['body']);
-  //
-  // foreach( $body2->consumption as $index => $value ) {
-  //   array_push($enphaseData[$index], $value);
-  // }
-
-  //array_unshift($enphaseData, [date('Y-m-d'), 'Produced (Wh)']);
-  array_unshift($enphaseData, ['Date', 'Produced (Wh)', 'Consumed (Wh)']);
-  $enphaseChartData = json_encode($enphaseData);
-
-  ?>
-
-  <table>
-    <tr>
-      <td width="10px">&#60;</td>
-      <td><div id='enphase_chart' style="padding:20px;background-color:white;"></div></td>
-      <td width="10px">&#62;</td>
-    </tr>
-  </table>
-
-  <div id='enphase_chartx' style="padding:20px;background-color:white;"></div>
-
-  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-  <script type="text/javascript">
-    google.charts.load('current', {'packages':['bar']});
-    google.charts.setOnLoadCallback(drawEnphaseChart);
-
-    function drawEnphaseChart() {
-      var data = google.visualization.arrayToDataTable(<?= $enphaseChartData ?>);
-
-      var options = {
-        chart: {
-          title: 'Energy Production & Consumption',
-        },
-        legend: {textStyle: {fontSize: 15}},
-      };
-      var chart = new google.charts.Bar(document.getElementById('enphase_chart'));
-
-      chart.draw(data, google.charts.Bar.convertOptions(options));
-    }
-  </script>
-  <?php
-}
 
 function show_enphase_graph() {
 
