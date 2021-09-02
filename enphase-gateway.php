@@ -98,7 +98,7 @@ function show_enphase_graph() {
       array_push($enphaseData[$index], $value);
     }
 
-    array_unshift($enphaseData, ['Date', 'Produced (Wh)', 'Consumed (Wh)']);
+    array_unshift($enphaseData, ['Date', 'Produced', 'Consumed']);
     $enphaseChartData = json_encode($enphaseData);
 
     $enphase_data = array(
@@ -119,26 +119,33 @@ function show_enphase_graph() {
     <div style="display: inline-block; height: 30px; vertical-align: top;">Powered by</div>
     <img style="height: 33px;" src="<?php echo plugin_dir_url( __FILE__ ) . 'images/Powered_By_Enphase_Logo_RGB.png'; ?>">
   </a>
-  <div id='enphase_chart' style="padding:20px;background-color:white;"></div>
+  <div id='enphase_chart' style="padding:20px;background-color:white;height:350px;width:740px;"></div>
 
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
   <script type="text/javascript">
-    google.charts.load('current', {'packages':['bar']});
+    //google.charts.load('current', {'packages':['bar']});
+    google.charts.load('current', {packages: ['corechart', 'bar']});
     google.charts.setOnLoadCallback(drawEnphaseChart);
 
     function drawEnphaseChart() {
       var data = google.visualization.arrayToDataTable(<?= $enphaseChartData ?>);
 
       var options = {
+        hAxis: {title: "Date", slantedText:true, slantedTextAngle:45 },
+        vAxis: {title: "Energy (Watt hours)"},
+        chartArea: { width: '68%', height: '70%', top: '10', left: '80'},
         chart: {
           title: 'Energy Production & Consumption',
           subtitle: 'Last <?= $days ?> days',
         },
         legend: {textStyle: {fontSize: 15}},
-      };
-      var chart = new google.charts.Bar(document.getElementById('enphase_chart'));
 
-      chart.draw(data, google.charts.Bar.convertOptions(options));
+      };
+      //var chart = new google.charts.Bar(document.getElementById('enphase_chart'));
+      var chart = new google.visualization.ColumnChart(document.getElementById('enphase_chart'));
+
+      //chart.draw(data, google.charts.Bar.convertOptions(options));
+      chart.draw(data, options);
     }
   </script>
   <?php
