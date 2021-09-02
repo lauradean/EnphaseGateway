@@ -61,6 +61,7 @@ function show_enphase_graph() {
 
   add_option('enphase_data');
   $enphase_data = get_option('enphase_data');
+  $enphase_data_end_date = end($enphase_data['chart_data'])[0];
 
   $days = get_option('enphase_days');
   $start_date = date('Y-m-d', strtotime('-' .$days. ' days'));
@@ -70,7 +71,7 @@ function show_enphase_graph() {
 
   if ($enphase_data
       && $enphase_data['start_date'] === $start_date
-      && $enphase_data['end_date'] === date('Y-m-d')
+      && $enphase_data_end_date === date('Y-m-d', yesterday)
       && $enphase_data['api_key'] === $key
       && $enphase_data['user_id'] === $user_id
       && $enphase_data['system_id'] === $system_id) {
@@ -106,7 +107,6 @@ function show_enphase_graph() {
       'api_key' => $key,
       'system_id' => $system_id,
       'start_date' => $start_date,
-      'end_date' => date('Y-m-d'),
       'chart_data' => $enphaseData
     );
     update_option('enphase_data', $enphase_data);
