@@ -61,24 +61,37 @@ function show_enphase_graph() {
 
   add_option('enphase_data');
   $enphase_data = get_option('enphase_data');
-  $enphase_data_end_date = end($enphase_data['chart_data'])[0];
 
   $days = get_option('enphase_days');
   $start_date = date('Y-m-d', strtotime('-' .$days. ' days'));
+  $today = date('Y-m-d');
   $user_id = get_option('enphase_user_id');
   $key = get_option('enphase_api_key');
   $system_id = get_option('enphase_system_id');
 
   if ($enphase_data
       && $enphase_data['start_date'] === $start_date
-      && $enphase_data_end_date === date('Y-m-d', yesterday)
+      && $enphase_data['gen_date'] === $today
       && $enphase_data['api_key'] === $key
       && $enphase_data['user_id'] === $user_id
       && $enphase_data['system_id'] === $system_id) {
     $enphaseChartData = json_encode($enphase_data['chart_data']);
   }
 
+  if (0) {}
+
   else {
+
+    // DATES
+    $begin = new DateTime($start_date);
+    $end = new DateTime($today);
+
+    $interval = DateInterval::createFromDateString('1 day');
+    $period = new DatePeriod($begin, $interval, $end);
+
+    foreach ($period as $dt) {
+        $enphaseData[][0] = $dt->format('Y-m-d');
+    }
 
     // PRODUCTION
     $url = 'https://api.enphaseenergy.com/api/v2/systems/' .$system_id. '/energy_lifetime?key=' .$key. '&user_id=' .$user_id. '&start_date=' .$start_date;
@@ -86,8 +99,7 @@ function show_enphase_graph() {
     $body = json_decode($result['body']);
 
     foreach( $body->production as $index => $value ) {
-      $date = date('Y-m-d', strtotime($body->start_date. ' + '. $index .' days'));
-      $enphaseData[] = array(0 => $date, 1 => $value);
+      array_push($enphaseData[$index], $value);
     }
 
     // CONSUMPTION
@@ -99,14 +111,22 @@ function show_enphase_graph() {
       array_push($enphaseData[$index], $value);
     }
 
-    array_unshift($enphaseData, ['Date', 'Produced', 'Consumed']);
-    $enphaseChartData = json_encode($enphaseData);
+    // LABELS
+    array_unshift($enphaseData, ['Date']);
+    if (count($body->production)) {
+      array_push($enphaseData[0], 'Produced');
+    }
+    if (count($body2->consumption)) {
+      array_push($enphaseData[0], 'Consumed');
+    }
 
+    $enphaseChartData = json_encode($enphaseData);  
     $enphase_data = array(
       'user_id' => $user_id,
       'api_key' => $key,
       'system_id' => $system_id,
       'start_date' => $start_date,
+      'gen_date' => $today,
       'chart_data' => $enphaseData
     );
     update_option('enphase_data', $enphase_data);
@@ -134,10 +154,6 @@ function show_enphase_graph() {
         hAxis: {title: "Date", slantedText:true, slantedTextAngle:45 },
         vAxis: {title: "Energy (Watt hours)"},
         chartArea: { width: '68%', height: '70%', top: '10', left: '80'},
-        chart: {
-          title: 'Energy Production & Consumption',
-          subtitle: 'Last <?= $days ?> days',
-        },
         legend: {textStyle: {fontSize: 15}},
 
       };
