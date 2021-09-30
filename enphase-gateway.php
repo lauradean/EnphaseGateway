@@ -3,7 +3,7 @@
  * Plugin Name: 	Enphase Gateway
  * Description:   Display information from your enphase solar installation
  * Requires at least: 	5.8
- * Requires PHP: 	7.4
+ * Requires PHP: 	7.3
  * Version: 0.2
  * Author: 		Laura Dean
  * License: 		MIT
@@ -11,7 +11,7 @@
 
 add_action('admin_menu', 'enphase_gateway_setup_menu');
 add_action( 'admin_init', 'update_enphase_gateway_settings' );
-add_shortcode('enphase', 'show_enphase_graph');
+add_shortcode('enphase', 'enphase');
 
 function enphase_gateway_setup_menu(){
     add_menu_page( 'Enphase Gateway Page', 'Enphase Gateway', 'manage_options', 'enphase-gateway', 'enphase_gateway_init' );
@@ -39,16 +39,16 @@ function enphase_gateway_init(){ ?>
       <?php do_settings_sections( 'enphase-gateway-settings' ); ?>
       <table class="form-table">
         <tr valign="top"><th scope="row">User ID</th>
-        <td><input type="text" name="enphase_user_id" value="<?php echo get_option( 'enphase_user_id' ); ?>"/>
+        <td><input type="text" name="enphase_user_id" value="<?php echo esc_textarea(get_option( 'enphase_user_id' )); ?>"/>
         </td></tr>
         <tr valign="top"><th scope="row">API Key</th>
-        <td><input type="text" name="enphase_api_key" value="<?php echo get_option( 'enphase_api_key' ); ?>"/>
+        <td><input type="text" name="enphase_api_key" value="<?php echo esc_textarea(get_option( 'enphase_api_key' )); ?>"/>
         </td></tr>
         <tr valign="top"><th scope="row">Site ID</th>
-        <td><input type="text" name="enphase_system_id" value="<?php echo get_option( 'enphase_system_id' ); ?>"/>
+        <td><input type="text" name="enphase_system_id" value="<?php echo esc_textarea(get_option( 'enphase_system_id' )); ?>"/>
         </td></tr>
         <tr valign="top"><th scope="row">Show last # days</th>
-        <td><input type="text" name="enphase_days" value="<?php echo get_option( 'enphase_days' ); ?>"/>
+        <td><input type="text" name="enphase_days" value="<?php echo esc_textarea(get_option( 'enphase_days' )); ?>"/>
         </td></tr>
       </table>
       <?php submit_button(); ?>
@@ -56,6 +56,12 @@ function enphase_gateway_init(){ ?>
 
 <?php }
 
+function enphase() {
+  ob_start();
+  show_enphase_graph();
+  $content = ob_get_clean();
+  return $content;
+}
 
 function show_enphase_graph() {
 
@@ -69,16 +75,17 @@ function show_enphase_graph() {
   $key = get_option('enphase_api_key');
   $system_id = get_option('enphase_system_id');
 
+  wp_enqueue_script('loader', 'https://www.gstatic.com/charts/loader.js', null, null);
+  wp_enqueue_script('enphase-chart', plugin_dir_url(__FILE__) . 'enphase-chart.js', 'loader', null);
+
   if ($enphase_data
       && $enphase_data['start_date'] === $start_date
       && $enphase_data['gen_date'] === $today
       && $enphase_data['api_key'] === $key
       && $enphase_data['user_id'] === $user_id
       && $enphase_data['system_id'] === $system_id) {
-    $enphaseChartData = json_encode($enphase_data['chart_data']);
+    $enphaseData = $enphase_data['chart_data'];
   }
-
-  if (0) {}
 
   else {
 
@@ -120,7 +127,7 @@ function show_enphase_graph() {
       array_push($enphaseData[0], 'Consumed');
     }
 
-    $enphaseChartData = json_encode($enphaseData);  
+    //$enphaseChartData = json_encode($enphaseData);
     $enphase_data = array(
       'user_id' => $user_id,
       'api_key' => $key,
@@ -133,36 +140,20 @@ function show_enphase_graph() {
 
   }
 
+  wp_localize_script( 'enphase-chart', 'enphaseChartData', $enphaseData );
+
   ?>
 
+  <div id='enphase_chart' style="padding:20px;background-color:white;height:350px;width:740px;"></div>
   <a href="http://enphase.com/">
     <div style="display: inline-block; height: 30px; vertical-align: top;">Powered by</div>
-    <img style="height: 33px;" src="<?php echo plugin_dir_url( __FILE__ ) . 'images/Powered_By_Enphase_Logo_RGB.png'; ?>">
+    <img style="height: 33px;" src="<?php echo esc_url(plugin_dir_url( __FILE__ ) . 'images/Powered_By_Enphase_Logo_RGB.png'); ?>">
   </a>
-  <div id='enphase_chart' style="padding:20px;background-color:white;height:350px;width:740px;"></div>
 
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
   <script type="text/javascript">
     //google.charts.load('current', {'packages':['bar']});
-    google.charts.load('current', {packages: ['corechart', 'bar']});
-    google.charts.setOnLoadCallback(drawEnphaseChart);
 
-    function drawEnphaseChart() {
-      var data = google.visualization.arrayToDataTable(<?= $enphaseChartData ?>);
-
-      var options = {
-        hAxis: {title: "Date", slantedText:true, slantedTextAngle:45 },
-        vAxis: {title: "Energy (Watt hours)"},
-        chartArea: { width: '68%', height: '70%', top: '10', left: '80'},
-        legend: {textStyle: {fontSize: 15}},
-
-      };
-      //var chart = new google.charts.Bar(document.getElementById('enphase_chart'));
-      var chart = new google.visualization.ColumnChart(document.getElementById('enphase_chart'));
-
-      //chart.draw(data, google.charts.Bar.convertOptions(options));
-      chart.draw(data, options);
-    }
   </script>
   <?php
 }
