@@ -70,7 +70,8 @@ function show_enphase_graph() {
 
   $days = get_option('enphase_days');
   $start_date = date('Y-m-d', strtotime('-' .$days. ' days'));
-  $today = date('Y-m-d');
+  $end_date = date('Y-m-d', strtotime('-1 days'));
+  $end_date = date('Y-m-d');
   $user_id = get_option('enphase_user_id');
   $key = get_option('enphase_api_key');
   $system_id = get_option('enphase_system_id');
@@ -80,7 +81,7 @@ function show_enphase_graph() {
 
   if ($enphase_data
       && $enphase_data['start_date'] === $start_date
-      && $enphase_data['gen_date'] === $today
+      && $enphase_data['end_date'] === $end_date
       && $enphase_data['api_key'] === $key
       && $enphase_data['user_id'] === $user_id
       && $enphase_data['system_id'] === $system_id) {
@@ -91,13 +92,13 @@ function show_enphase_graph() {
 
     // DATES
     $begin = new DateTime($start_date);
-    $end = new DateTime($today);
+    $end = new DateTime($end_date);
 
     $interval = DateInterval::createFromDateString('1 day');
     $period = new DatePeriod($begin, $interval, $end);
 
     foreach ($period as $dt) {
-        $enphaseData[][0] = $dt->format('Y-m-d');
+        $enphaseData[][0] = $dt->format('m-d');
     }
 
     // PRODUCTION
@@ -144,7 +145,7 @@ function show_enphase_graph() {
 
   ?>
 
-  <div id='enphase_chart' style="padding:20px;background-color:white;height:350px;width:740px;"></div>
+  <div id='enphase_chart' style="margin-bottom:20px;background-color:white;height:350px;width:100%;"></div>
   <a href="http://enphase.com/">
     <div style="display: inline-block; height: 30px; vertical-align: top;">Powered by</div>
     <img style="height: 33px;" src="<?php echo esc_url(plugin_dir_url( __FILE__ ) . 'images/Powered_By_Enphase_Logo_RGB.png'); ?>">
