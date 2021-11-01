@@ -2,8 +2,17 @@ google.charts.load("current", { packages: ["corechart", "bar"] });
 google.charts.setOnLoadCallback(drawEnphaseChart);
 
 function drawEnphaseChart() {
-  var data = google.visualization.arrayToDataTable(enphaseChartData);
+  const dataLength = enphaseChartData[0].length;
+  enphaseChartData.forEach((dataPoint, index) => {
+    if (
+      !enphaseChartData[index] ||
+      enphaseChartData[index].length !== dataLength
+    ) {
+      enphaseChartData.splice(index, 1);
+    }
+  });
 
+  var data = google.visualization.arrayToDataTable(enphaseChartData);
   var options = {
     hAxis: { title: "Date", slantedText: true, slantedTextAngle: 45 },
     vAxis: { title: "Energy (Watt hours)" },

@@ -65,12 +65,13 @@ function enphase() {
 
 function show_enphase_graph() {
 
+  console.log('start');
+
   add_option('enphase_data');
   $enphase_data = get_option('enphase_data');
 
   $days = get_option('enphase_days');
   $start_date = date('Y-m-d', strtotime('-' .$days. ' days'));
-  $end_date = date('Y-m-d', strtotime('-1 days'));
   $end_date = date('Y-m-d');
   $user_id = get_option('enphase_user_id');
   $key = get_option('enphase_api_key');
@@ -140,6 +141,8 @@ function show_enphase_graph() {
     update_option('enphase_data', $enphase_data);
 
   }
+
+  console.log($enphaseData);
 
   wp_localize_script( 'enphase-chart', 'enphaseChartData', $enphaseData );
 
